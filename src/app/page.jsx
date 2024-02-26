@@ -43,7 +43,7 @@ export default async function Home({ searchParams }) {
                   No.
                 </th>
                 <th className="text-center w-10 p-3 text-lg font-semibold tracking-wide ">
-                  หมายเลขอัปโหลด
+                  หมายเลขอัปโหลด.test
                 </th>
                 <th className="text-center p-3 text-lg font-semibold tracking-wide ">
                   รหัสวิชา
