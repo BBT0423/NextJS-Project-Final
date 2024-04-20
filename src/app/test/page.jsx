@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 
 const expectedColumnPattern = ["NO", "ID", "NAME", "GRADE"];
@@ -9,7 +10,7 @@ const validateColumnNames = (worksheet) => {
   const columnNames = [];
 
   for (let C = range.s.c; C <= range.e.c; ++C) {
-    const cellAddress = { r: range.s.r, c: C }; // Assuming the column names are in the first row
+    const cellAddress = { r: range.s.r, c: C };
     const cellRef = XLSX.utils.encode_cell(cellAddress);
     const columnName = worksheet[cellRef]?.v;
     columnNames.push(columnName);
@@ -26,49 +27,101 @@ const validateColumnNames = (worksheet) => {
 };
 
 export default function Test() {
-  const [data, setData] = useState([]);
+  const [excelData, setExcelData] = useState([]);
   const [error, setError] = useState(null);
 
   const handleFileUpload = (e) => {
-    const reader = new FileReader();
-    reader.readAsBinaryString(e.target.files[0]);
-    reader.onload = (e) => {
-      const data = e.target.result;
-      const workbook = XLSX.read(data, { type: "binary" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+    const file = e.target.files[0];
 
-      if (!validateColumnNames(worksheet)) {
-        setError("Invalid column names. Please upload a file with columns: NO, ID, NAME, GRADE");
-        setData([]);
+    if (!file) {
+      return; // No file selected
+    }
+
+    const fileExtension = file.name.split(".").pop().toLowerCase();
+
+    if (fileExtension !== "xlsx" && fileExtension !== "xls") {
+      toast.error("Please upload a valid Excel file (XLSX or XLS).");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array", cellDates: true });
+
+      // Assuming only one sheet is present in the Excel file
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+
+      // Validate column names
+      if (!validateColumnNames(sheet)) {
+        toast.error("Invalid column names. Expected: NO, ID, NAME, GRADE");
+        setExcelData([]);
+        setError("Invalid column names");
         return;
       }
 
-      const parsedData = XLSX.utils.sheet_to_json(worksheet);
-      setData(parsedData);
+      // Parse the sheet data to JSON
+      const jsonData = XLSX.utils.sheet_to_json(sheet, {
+        raw: false,
+        dateNF: "mm/dd/yyyy",
+      });
+
+      // Convert keys to uppercase for consistency
+      const formattedData = jsonData.map((rowData) => {
+        const formattedRow = {};
+        for (const key in rowData) {
+          const formattedKey = key.toUpperCase();
+          formattedRow[formattedKey] = rowData[key];
+        }
+        return formattedRow;
+      });
+
+      setExcelData(formattedData);
       setError(null);
     };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const formatDateWithTimeZone = (date) => {
+    // Implement your date formatting logic here
+    return date.toString();
   };
 
   return (
     <div className="App">
       <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} />
       {error && <p style={{ color: "red" }}>{error}</p>}
-      {data.length > 0 && (
-        <table className="table">
-          <thead>
+      {excelData.length > 0 && (
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b-2 border-gray-200">
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Grade</th>
+              {Object.keys(excelData[0]).map((key) => (
+                <th
+                  className="text-center w-10 p-3 text-lg font-semibold tracking-wide sticky top-0 bg-gray-50"
+                  key={key}
+                >
+                  {key}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody>
-            {data.map((row, index) => (
-              <tr key={index}>
-                <td>{row.ID}</td>
-                <td>{row.NAME}</td>
-                <td>{row.GRADE}</td>
+          <tbody className="divide-y divide-gray-100">
+            {excelData.map((individualExcelData, index) => (
+              <tr className="bg-white" key={index}>
+                {Object.keys(individualExcelData).map((key) => (
+                  <td
+                    className="text-center p-3 text-lg text-gray-700 whitespace-nowrap"
+                    key={key}
+                  >
+                    {key.toLowerCase().includes("date") &&
+                    individualExcelData[key] instanceof Date
+                      ? formatDateWithTimeZone(individualExcelData[key])
+                      : individualExcelData[key]}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
