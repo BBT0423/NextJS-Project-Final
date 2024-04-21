@@ -5,6 +5,8 @@ import * as XLSX from "xlsx";
 
 const expectedColumnPattern = ["NO", "ID", "NAME", "GRADE"];
 
+
+//เช็ค collumn name ว่าตรงกับ pattern ไหม
 const validateColumnNames = (worksheet) => {
   const range = XLSX.utils.decode_range(worksheet["!ref"]);
   const columnNames = [];
@@ -30,6 +32,8 @@ export default function Test() {
   const [excelData, setExcelData] = useState([]);
   const [error, setError] = useState(null);
 
+
+  //เป็นการอ่านไฟล์ของ excel โดยใช้ library XLSX
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
 
@@ -45,14 +49,14 @@ export default function Test() {
     }
 
     const reader = new FileReader();
-
+    //ใช้ไฟล์ reader เจาะเข้าไปอ่านไฟล์ excel แล้วเก็บข้อมูลเป้น array
     reader.onload = (e) => {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: "array", cellDates: true });
 
       // Assuming only one sheet is present in the Excel file
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
+      const sheetName = workbook.SheetNames[0]; //ลำดับ sheetname
+      const sheet = workbook.Sheets[sheetName]; //name
 
       // Validate column names
       if (!validateColumnNames(sheet)) {
@@ -86,7 +90,6 @@ export default function Test() {
   };
 
   const formatDateWithTimeZone = (date) => {
-    // Implement your date formatting logic here
     return date.toString();
   };
 
